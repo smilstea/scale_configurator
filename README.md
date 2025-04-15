@@ -3,6 +3,14 @@ Create configurations incrementing numbers, hex, ip addresses, etc with ease
 
 Usage: python3 {scale_configurator.py} [--config][--file <filename>]
 <prompted for number of runs>
+
+packages:
+
+import sys
+import re
+import ipaddress
+
+
     
     1. For numbers
     Ranges such as [10-50] will automatically increment by 1.
