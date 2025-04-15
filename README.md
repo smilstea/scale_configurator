@@ -5,10 +5,7 @@ Usage: python3 {scale_configurator.py} [--config][--file <filename>]
 <prompted for number of runs>
 
 packages:
-
-import sys
-import re
-import ipaddress
+sys, re, ipaddress
 
 
     
