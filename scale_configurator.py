@@ -3,20 +3,39 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2022-2025 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "1.0.0"
+__version__    = "1.0.1"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "maintenance"
 
-import sys
 import re
 import ipaddress
+import sys
+
+# Define the regex with named groups
+IPV4_REGEX = re.compile(
+    r'\[\['
+    r'(?P<ip_address>\d+\.\d+\.\d+\.\d+)'  # Named Group: ip_address (e.g., 192.168.0.1)
+    r'(?:'                                 # Non-capturing group for subnet/mask options
+        r'(?P<slash_prefix>\/\d+)'         # Named Group: slash_prefix (e.g., /24)
+        r'|'
+        r'\s*(?P<dotted_mask>\d+\.\d+\.\d+\.\d+)' # Named Group: dotted_mask (e.g., 255.255.255.0), with optional space
+    r')?'                                  # Make the entire subnet/mask part optional
+    r',?'                                  # Optional comma
+    r'(?P<increment>\d*)?'                 # Named Group: increment (e.g., 3)
+    r'\]\]'
+)
+
+IPV6_REGEX = re.compile(
+    r'\{\{'
+    r'(?P<ip_address>([a-f0-9:]+:+)+[a-f0-9]+)' # Named Group: ip_address
+    r'(?P<prefix_length>\/\d+)'                 # Named Group: prefix_length (e.g., /64)
+    r',?'
+    r'(?P<increment>\d*)?'                      # Named Group: increment
+    r'\}\}'
+)
 
 def task():
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
     is_error = False
     file = ''
     for index, arg in enumerate(sys.argv):
@@ -47,40 +66,33 @@ def task():
     return
 
 def Scale_Configurator(file):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2022 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    #generate configuration file
-    """    This script is designed to generate scale configurations.
-    
-    1. For numbers
+    """1. For numbers
     Ranges such as [10-50] will automatically increment by 1.
     For a different multiplier use a ',' such as [10-50,5].
-    
+
     2. For hex
     Ranges such as {0-a} or {0-A} will automatically increment by 1.
     For a different multiplier use a ',' such as {0-A,5}.
     Case insensitive
-    
+
     3. For letters
     Ranges such as (a-g) or (A-G) will automatically increment by 1.
     For a different multiplier use a ',' such as (a-g,5).
     Case sensitive
-    
+
     4. For IPv4 Addresses (note the subnet is not calculated,
     you must calculate the right host addresses).
     Ranges such as [[192.168.0.1 255.255.255.0]] or
     [[192.168.0.1/24]] will automatically increment by 1.
     For a different multiplier use a ',' such as [[192.168.0.1 255.255.255.0,3]]
-    
+
     6. For IPv6 addresses (note the subnet is not calculated,
     you must calculate the right host addresses).
     Ranges such as {{2001::1/64}} will automatically increment by 1 in hex.
     For a different multiplier use a ',' such as {{2001::1/64,7}}
-    
+
     Returns:
-    - Scale config to webpage
+    - Scale config
 
     ###Example###
     Example Times to Run: 5
@@ -102,48 +114,44 @@ def Scale_Configurator(file):
      description IPv4 0
      encapsulation dot1Q 1 second-dot1q 30 exact
      ipv4 address 192.168.0.1/30
-     ipv4 secondary-address 10.0.0.1/30
+     ipv4 secondary-address 10.0.0.1/24
      ipv6 address 2001::1/124
      no shut
     !
-
-    interface GigabitEthernet0/0/0/13.2 l2transport
+interface GigabitEthernet0/0/0/13.2 l2transport
      vrf vrfd
      description IPv4 6
      encapsulation dot1Q 2 second-dot1q 33 exact
      ipv4 address 192.168.0.9/30
-     ipv4 secondary-address 10.0.0.2/30
+     ipv4 secondary-address 10.0.0.2/24
      ipv6 address 2001::8/124
      no shut
     !
-
-    interface GigabitEthernet0/0/0/13.3 l2transport
+interface GigabitEthernet0/0/0/13.3 l2transport
      vrf vrfb
      description IPv4 C
      encapsulation dot1Q 3 second-dot1q 30 exact
      ipv4 address 192.168.0.17/30
-     ipv4 secondary-address 10.0.0.5/30
+     ipv4 secondary-address 10.0.0.3/24
      ipv6 address 2001::f/124
      no shut
     !
-
-    interface GigabitEthernet0/0/0/13.4 l2transport
+interface GigabitEthernet0/0/0/13.4 l2transport
      vrf vrfe
      description IPv4 2
      encapsulation dot1Q 4 second-dot1q 33 exact
      ipv4 address 192.168.0.25/30
-     ipv4 secondary-address 10.0.0.6/30
-     ipv6 address 2001::17/124
+     ipv4 secondary-address 10.0.0.4/24
+     ipv6 address 2001::16/124
      no shut
     !
-
-    interface GigabitEthernet0/0/0/13.5 l2transport
+interface GigabitEthernet0/0/0/13.5 l2transport
      vrf vrfc
      description IPv4 8
      encapsulation dot1Q 5 second-dot1q 30 exact
      ipv4 address 192.168.0.33/30
-     ipv4 secondary-address 10.0.0.9/30
-     ipv6 address 2001::1e/124
+     ipv4 secondary-address 10.0.0.5/24
+     ipv6 address 2001::1d/124
      no shut
     !
     """
@@ -163,358 +171,260 @@ def Scale_Configurator(file):
         for error in result:
             print(error)
 def parse(textarea, timestorun):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
     x = 0
     while (x < timestorun):
-        for line in textarea.split("\n"):
-            if "[[" and "]]" in line:
-                line = parse_ipv4_address(line, x)
-            if "[" and "]" in line:
-                line = parse_numbers(line, x)
-            if "{{" and "}}" in line:
-                line = parse_ipv6_address(line, x)
-            if "{" and "}" in line:
-                line = parse_hex(line, x)
-            if "(" and ")" in line:
-                line = parse_letters(line, x)
+        for line_original in textarea.split("\n"):
+            line = line_original
+
+            # Use the compiled regex objects for re.sub
+            line = IPV4_REGEX.sub(lambda m, current_x=x: _replace_ipv4_match(m, current_x), line)
+            line = re.sub(r'\[(\d+)-(\d+),?(\d+)?\]', lambda m, current_x=x: _replace_numbers_match(m, current_x), line)
+            line = IPV6_REGEX.sub(lambda m, current_x=x: _replace_ipv6_match(m, current_x), line)
+            line = re.sub(r'\{([0-9a-fA-F]+)-([0-9a-fA-F]+),?(\d+)?\}', lambda m, current_x=x: _replace_hex_match(m, current_x), line)
+            line = re.sub(r'\(([a-zA-Z]+)-([a-zA-Z]+),?(\d+)?\)', lambda m, current_x=x: _replace_letters_match(m, current_x), line)
             print(line)
         x += 1
     return
 
-def parse_ipv4_address(line, x):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
+def _get_next_usable_ipv4_address(current_ip_obj, current_network_obj):
     """
-    This is for IPv4 addresses
+    Finds the next usable IPv4 address, skipping network and broadcast addresses
+    for prefixes < 31. For /31 and /32, all addresses are considered usable.
+    Moves to the next subnet if the current one is exhausted.
+    Returns the next usable IP address object and its new network object.
     """
-    regex_int = re.compile(r'(\[\[((\d+\.\d+\.\d+\.\d+)((\/(\d+)?)| (\d+\.\d+\.\d+\.\d+)?)),?(\d*)?\]\])')
-    matches = re.findall(regex_int, line)
+    # Special handling for /31 and /32 prefixes
+    # For these, all addresses are considered "usable" host addresses.
+    if current_network_obj.prefixlen in (31, 32):
+        next_candidate_int = int(current_ip_obj) + 1
 
-    for match in matches:
-        original_ip = match[2]
-        subnet_or_mask = match[4] or '/30'  # Default to /30 if no mask is provided
-        increment = int(match[7]) if match[7] else 1
-        total_increment = x * increment
+        # If incrementing goes beyond the current /31 or /32 network's broadcast address,
+        # move to the start of the next network of the same prefix length.
+        if next_candidate_int > int(current_network_obj.broadcast_address):
+            next_network_start_int = int(current_network_obj.broadcast_address) + 1
+            current_network_obj = ipaddress.IPv4Network(
+                (next_network_start_int, current_network_obj.prefixlen), strict=False
+            )
+            # The first address in the new /31 or /32 network is its network_address
+            next_ip = current_network_obj.network_address
+        else:
+            next_ip = ipaddress.IPv4Address(next_candidate_int)
 
-        # Create a network object
-        network = ipaddress.IPv4Network(original_ip + subnet_or_mask, strict=False)
-        current_ip = ipaddress.IPv4Address(original_ip)
-        new_ip_int = int(current_ip)
+        return next_ip, current_network_obj
 
-        # Increment while respecting subnet boundaries
-        while total_increment > 0:
-            # Calculate the next IP
-            new_ip_int += 1
-            new_ip = ipaddress.IPv4Address(new_ip_int)
+    # Original logic for prefixes < 31 (i.e., networks with dedicated host addresses)
+    next_candidate_int = int(current_ip_obj) + 1
 
-            # Check if the new IP is a network or broadcast address
-            if new_ip == network.network_address or new_ip == network.broadcast_address:
-                continue  # Skip to the next possible IP
+    while True:
+        next_ip = ipaddress.IPv4Address(next_candidate_int)
 
-            # Check if the new IP exceeds the broadcast address
-            if new_ip > network.broadcast_address:
-                # Move to the next subnet
-                next_network_start = int(network.broadcast_address) + 1
-                network = ipaddress.IPv4Network((next_network_start, network.prefixlen), strict=False)
-                new_ip_int = int(network.network_address)
-                continue
+        # Check if we've gone past the broadcast address of the current network
+        if next_ip > current_network_obj.broadcast_address:
+            # Move to the start of the next network
+            next_network_start_int = int(current_network_obj.broadcast_address) + 1
+            current_network_obj = ipaddress.IPv4Network(
+                (next_network_start_int, current_network_obj.prefixlen), strict=False
+            )
+            # The first usable host in the new network is network_address + 1
+            next_candidate_int = int(current_network_obj.network_address) + 1
+            continue # Re-evaluate this new candidate IP
 
-            total_increment -= 1
+        # Check if the current candidate is a network or broadcast address
+        if next_ip == current_network_obj.network_address or \
+           next_ip == current_network_obj.broadcast_address:
+            next_candidate_int += 1 # Skip this address and try the next one
+            continue
 
-        # After the loop, ensure new_ip has a valid address
-        new_ip = ipaddress.IPv4Address(new_ip_int)
+        # If we reached here, next_ip is a usable host address
+        return next_ip, current_network_obj
 
-        # Replace the original IP with the new IP in the line
-        new_address_with_subnet = f"{new_ip}{subnet_or_mask}"
-        original = match[0]
-        line = line.replace(original, new_address_with_subnet, 1)
-
-    return line
-
-def parse_ipv6_address(line, x):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
+def _get_next_ipv6_address(current_ip_obj, current_network_obj):
     """
-    This is for IPv6 addresses
+    Finds the next IPv6 address. Moves to the next subnet if the current one is exhausted.
+    Returns the next IP address object and its new network object.
     """
-    regex_ipv6 = re.compile(r'(\{\{(([a-f0-9:]+:+)+[a-f0-9]+)(\/\d+)(,(\d+))?\}\})')
-    matches = regex_ipv6.finditer(line)
+    next_candidate_int = int(current_ip_obj) + 1
 
-    for match in matches:
-        original_ip = match.group(2)  # Full IPv6 address
-        prefix_length = match.group(4)  # Prefix length, e.g., /64
-        increment = int(match.group(6)) if match.group(6) else 1  # Optional increment
-        total_increment = x * increment
+    while True:
+        next_ip = ipaddress.IPv6Address(next_candidate_int)
 
-        # Create a network object
-        network = ipaddress.IPv6Network(original_ip + prefix_length, strict=False)
-        current_ip = ipaddress.IPv6Address(original_ip)
-        new_ip_int = int(current_ip)
+        # Check if we've gone past the end of the current network
+        if next_ip >= current_network_obj.network_address + current_network_obj.num_addresses:
+            # Move to the start of the next network
+            next_network_start_int = int(current_network_obj.network_address) + current_network_obj.num_addresses
+            current_network_obj = ipaddress.IPv6Network(
+                (next_network_start_int, current_network_obj.prefixlen), strict=False
+            )
+            # The first address in the new network is its network_address
+            next_candidate_int = int(current_network_obj.network_address)
+            continue # Re-evaluate this new candidate IP
 
-        # Increment while respecting subnet boundaries
-        while total_increment > 0:
-            new_ip_int += 1
-            new_ip = ipaddress.IPv6Address(new_ip_int)
+        # If we reached here, next_ip is a valid address within the current or new network
+        return next_ip, current_network_obj
 
-            # Check if the new IP exceeds the broadcast address of the current subnet
-            if new_ip >= network.network_address + network.num_addresses:
-                # Move to the next subnet
-                next_network_start = int(network.network_address) + network.num_addresses
-                network = ipaddress.IPv6Network((next_network_start, network.prefixlen), strict=False)
-                new_ip_int = int(network.network_address)
-                continue  # Continue to the next iteration of the while loop
+def _replace_ipv4_match(match, x):
+    original_ip = match.group('ip_address')
+    slash_prefix = match.group('slash_prefix')       # e.g., "/24"
+    dotted_mask = match.group('dotted_mask')         # e.g., "255.255.255.0"
+    increment_str = match.group('increment')
 
-            total_increment -= 1
+    # Determine the prefix length as an integer
+    prefix_len_int = None
+    if slash_prefix:
+        prefix_len_int = int(slash_prefix[1:]) # Convert "/24" to 24
+    elif dotted_mask:
+        # Create a dummy network to get the prefix length from the dotted mask
+        prefix_len_int = ipaddress.IPv4Network(f"0.0.0.0/{dotted_mask}").prefixlen
+    else:
+        # Default to /30 if neither was provided
+        prefix_len_int = 30
 
-        new_ip = ipaddress.IPv6Address(new_ip_int)
-        new_address_with_prefix = f"{new_ip}{prefix_length}"
-        original_placeholder = match.group(0)
-        line = line.replace(original_placeholder, new_address_with_prefix, 1)
+    increment = int(increment_str) if increment_str else 1
+    total_increment_steps = x * increment
 
-    return line
+    current_ip_obj = ipaddress.IPv4Address(original_ip)
+    # Use the integer prefix length for network object creation
+    network_obj = ipaddress.IPv4Network((original_ip, prefix_len_int), strict=False)
 
-def parse_numbers(line, x):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for incrementing base 10
-    """
-    increment = 1
-    regex_int = re.compile(r'\[\d+-\d+,?(\d+)?\]')
-    match = re.findall(regex_int, line)
-    for i in match:
-        match2 = re.search(r'(\[(\d+)-(\d+),?(\d+)?\])', line)
-        if match2.group(4):
-            increment = int(match2.group(4))
-        temp = int(match2.group(2))+(x*increment)
-        while temp > int(match2.group(3)):
-            temp += int(match2.group(2)) - int(match2.group(3)) -1
-        line = re.sub(r'(\[(\d+)-(\d+),?(\d+)?\])', str(temp), str(line), count=1)
-    return line
+    for _ in range(total_increment_steps):
+        current_ip_obj, network_obj = _get_next_usable_ipv4_address(current_ip_obj, network_obj)
 
-def parse_hex(line, x):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for incrementing in hex
-    """
-    increment = 1
-    regex_hex = re.compile(r'\{[0-9a-fA-F]+-[0-9a-fA-F]+,?(\d+)?\}')
-    match = re.findall(regex_hex, line)
-    for i in match:
-        match2 = re.search(r'(\{([0-9a-fA-F]+)-([0-9a-fA-F]+),?(\d+)?\})', line)
-        if match2.group(4):
-            increment = int(match2.group(4))
-        starthex = int(match2.group(2), 16)
-        endhex = int(match2.group(3), 16)
-        temp = starthex +(x*increment)
-        while temp > endhex:
-            temp += starthex - endhex - 1
-        temp = '{:X}'.format(temp)
-        line = re.sub(r'(\{([0-9a-fA-F]+)-([0-9a-fA-F]+),?(\d+)?\})', str(temp), str(line), count=1)
-    return line
+    # For the return value, always format as IP/prefixlen
+    return f"{current_ip_obj}/{prefix_len_int}"
 
-def parse_letters(line, x):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for incrementing letters, we must use the ASCII
-    representation to do this
-    """
-    increment = 1
-    regex_letter = re.compile(r'\([a-zA-Z]+-[a-zA-Z]+,?(\d+)?\)')
-    match = re.findall(regex_letter, line)
-    for i in match:
-        match2 = re.search(r'(\(([a-zA-Z]+)-([a-zA-Z]+),?(\d+)?\))', line)
-        startletter = ord(match2.group(2))
-        endletter = ord(match2.group(3))
-        if match2.group(4):
-            increment = int(match2.group(4))
-        temp = startletter +(x*increment)
-        while temp > endletter:
-            temp += startletter - endletter - 1
-        temp = str(chr(temp))
-        line = re.sub(r'(\(([a-zA-Z]+)-([a-zA-Z]+),?(\d+)?\))', str(temp), str(line), count=1)
-    return line
+def _replace_ipv6_match(match, x):
+    original_ip = match.group('ip_address')
+    prefix_length = match.group('prefix_length')
+    increment_str = match.group('increment')
+
+    increment = int(increment_str) if increment_str else 1
+    total_increment_steps = x * increment
+
+    current_ip_obj = ipaddress.IPv6Address(original_ip)
+    network_obj = ipaddress.IPv6Network(f"{original_ip}{prefix_length}", strict=False)
+
+    for _ in range(total_increment_steps):
+        current_ip_obj, network_obj = _get_next_ipv6_address(current_ip_obj, network_obj)
+
+    return f"{current_ip_obj}{prefix_length}"
+
+def _replace_numbers_match(match, x):
+    start_num = int(match.group(1)) # Adjusted group index for generic regex
+    end_num = int(match.group(2))   # Adjusted group index for generic regex
+    increment = int(match.group(3)) if match.group(3) else 1 # Adjusted group index for generic regex
+    
+    temp = start_num + (x * increment)
+    range_size = end_num - start_num + 1
+    temp = start_num + ((temp - start_num) % range_size)
+    
+    return str(temp)
+
+def _replace_hex_match(match, x):
+    start_hex = int(match.group(1), 16) # Adjusted group index for generic regex
+    end_hex = int(match.group(2), 16)   # Adjusted group index for generic regex
+    increment = int(match.group(3)) if match.group(3) else 1 # Adjusted group index for generic regex
+    
+    temp = start_hex + (x * increment)
+    range_size = end_hex - start_hex + 1
+    temp = start_hex + ((temp - start_hex) % range_size)
+    
+    return '{:X}'.format(temp)
+
+def _replace_letters_match(match, x):
+    start_letter_ord = ord(match.group(1)) # Adjusted group index for generic regex
+    end_letter_ord = ord(match.group(2))   # Adjusted group index for generic regex
+    increment = int(match.group(3)) if match.group(3) else 1 # Adjusted group index for generic regex
+    
+    temp = start_letter_ord + (x * increment)
+    range_size = end_letter_ord - start_letter_ord + 1
+    temp = start_letter_ord + ((temp - start_letter_ord) % range_size)
+    
+    return str(chr(temp))
 
 def test_parse(textarea, timestorun):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    Create the finaloutput list, parse line by line for the number of times specified
-    and return final output
-    """
     result = []
     for line in textarea.split("\n"):
-        # Check if any manipulation needs to be done
-        if "[[" and "]]" in line:
-            line = test_parse_ipv4_address(line)
-        if "[" and "]" in line:
-            result = test_parse_numbers(line, result)
-        if "{{" and "}}" in line:
-            line = test_parse_ipv6_address(line)
-        if "{" and "}" in line:
-            result = test_parse_hex(line, result)
-        if "(" and ")" in line:
-            result = test_parse_letters(line, result)
+        # Use compiled regex objects
+        line = IPV4_REGEX.sub(lambda m: _test_replace_ipv4_match(m), line)
+        line = IPV6_REGEX.sub(lambda m: _test_replace_ipv6_match(m), line)
+
+        result = test_parse_numbers(line, result)
+        result = test_parse_hex(line, result)
+        result = test_parse_letters(line, result)
     return result
 
-def test_parse_ipv4_address(line):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for IPv4 addresses
-    """
-    regex_int = re.compile(r'(\[\[((\d+\.\d+\.\d+\.\d+)((\/(\d+)?)| (\d+\.\d+\.\d+\.\d+)?)),?(\d*)?\]\])')
-    matches = re.findall(regex_int, line)
-
-    for match in matches:
-        original_ip = match[2]
-        subnet_or_mask = match[4] or '/30'  # Default to /30 if no mask is provided
-        increment = int(match[7]) if match[7] else 1
-
-        # Create a network object
-        network = ipaddress.IPv4Network(original_ip + subnet_or_mask, strict=False)
-        current_ip = ipaddress.IPv4Address(original_ip)
-        new_ip_int = int(current_ip)
-
-        # Increment while respecting subnet boundaries
-        for _ in range(increment):
-            new_ip_int += 1
-            new_ip = ipaddress.IPv4Address(new_ip_int)
-
-            # Check if the new IP is a network or broadcast address
-            if new_ip == network.network_address or new_ip == network.broadcast_address:
-                new_ip_int += 1
-                new_ip = ipaddress.IPv4Address(new_ip_int) # Increment again after skipping
-                if new_ip > network.broadcast_address:
-                    next_network_start = int(network.broadcast_address) + 1
-                    network = ipaddress.IPv4Network((next_network_start, network.prefixlen), strict=False)
-                    new_ip_int = int(network.network_address)
-                    new_ip = ipaddress.IPv4Address(new_ip_int) # Set to the start of the next
-
-            # Check if the new IP exceeds the broadcast address
-            elif new_ip > network.broadcast_address:
-                # Move to the next subnet
-                next_network_start = int(network.broadcast_address) + 1
-                network = ipaddress.IPv4Network((next_network_start, network.prefixlen), strict=False)
-                new_ip_int = int(network.network_address)
-                new_ip = ipaddress.IPv4Address(new_ip_int) # Set to the start of the next
-
-        # Replace the original IP with the new IP in the line
-        new_address_with_subnet = f"{new_ip}{subnet_or_mask}"
-        line = line.replace(f"[[{original_ip}{subnet_or_mask}]]", new_address_with_subnet)
-
-    return line
-
-def test_parse_ipv6_address(line):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for IPv6 addresses
-    """
-    regex_ipv6 = re.compile(r'(\{\{(([a-f0-9:]+:+)+[a-f0-9]+)(\/\d+)(,(\d+))?\}\})')
-    matches = regex_ipv6.finditer(line)
-
-    for match in matches:
-        original_ip = match[2]
-        prefix_length = match[4]  # e.g., /64
-        total_increment = int(match[6]) if match[6] else 1
-
-        # Create a network object
-        network = ipaddress.IPv6Network(original_ip + prefix_length, strict=False)
-        current_ip = ipaddress.IPv6Address(original_ip)
-        new_ip_int = int(current_ip)
-
-        # Increment while respecting subnet boundaries
-        for _ in range(total_increment):
-            new_ip_int += 1
-            new_ip = ipaddress.IPv6Address(new_ip_int)
-
-            # Check if the new IP exceeds the broadcast address of the current subnet
-            if new_ip >= network.network_address + network.num_addresses:
-                # Move to the next subnet
-                next_network_start = int(network.network_address) + network.num_addresses
-                network = ipaddress.IPv6Network((next_network_start, network.prefixlen), strict=False)
-                new_ip_int = int(network.network_address)
-                continue  # Continue to the next iteration of the while loop
-
-            total_increment -= 1
-
-        new_ip = ipaddress.IPv6Address(new_ip_int)
-        new_address_with_prefix = f"{new_ip}{prefix_length}"
-        original_placeholder = match.group(0)
-        line = line.replace(original_placeholder, new_address_with_prefix, 1)
-
-    return line
-
 def test_parse_numbers(line, result):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for incrementing base 10
-    """
-    regex_int = re.compile(r'\[\d+-\d+,?(\d+)?\]')
-    match = re.findall(regex_int, line)
-    for i in match:
-        match2 = re.search(r'(\[(\d+)-(\d+),?(\d+)?\])', line)
-        if int(match2.group(2)) > int(match2.group(3)):
-            result.append("Error beginning number is smaller than ending number: " + str(match2.group(1)))
+    regex_int = re.compile(r'\[(\d+)-(\d+),?(\d+)?\]')
+    matches = regex_int.findall(line)
+    for match_groups in matches:
+        start_num = int(match_groups[0])
+        end_num = int(match_groups[1])
+        if start_num > end_num:
+            result.append(f"Error beginning number ({start_num}) is greater than ending number ({end_num}): {match_groups[0]}-{match_groups[1]}")
     return result
 
 def test_parse_hex(line, result):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for incrementing in hex
-    """
-    regex_hex = re.compile(r'\{[0-9a-fA-F]+-[0-9a-fA-F]+,?(\d+)?\}')
-    match = re.findall(regex_hex, line)
-    for i in match:
-        match2 = re.search(r'(\{([0-9a-fA-F]+)-([0-9a-fA-F]+),?(\d+)?\})', line)
-        if int(match2.group(2), 16) > int(match2.group(3), 16):
-            result.append("Error beginning hex is smaller than ending hex: " + str(match2.group(1)))
+    regex_hex = re.compile(r'\{([0-9a-fA-F]+)-([0-9a-fA-F]+),?(\d+)?\}')
+    matches = regex_hex.findall(line)
+    for match_groups in matches:
+        start_hex = int(match_groups[0], 16)
+        end_hex = int(match_groups[1], 16)
+        if start_hex > end_hex:
+            result.append(f"Error beginning hex ({match_groups[0]}) is greater than ending hex ({match_groups[1]}): {match_groups[0]}-{match_groups[1]}")
     return result
 
 def test_parse_letters(line, result):
-    ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2025 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
-    ###__status__     = "maintenance"
-    """
-    This is for incrementing letters, we must use the ASCII
-    representation to do this
-    """
-    regex_letter = re.compile(r'\([a-zA-Z]+-[a-zA-Z]+,?(\d+)?\)')
-    match = re.findall(regex_letter, line)
-    for i in match:
-        match2 = re.search(r'(\(([a-zA-Z]+)-([a-zA-Z]+),?(\d+)?\))', line)
-        if ord(match2.group(2)) > ord(match2.group(3)):
-            result.append("Error beginning ASICC is smaller than ending ASCII: " + str(match2.group(1)))
+    regex_letter = re.compile(r'\(([a-zA-Z]+)-([a-zA-Z]+),?(\d+)?\)')
+    matches = regex_letter.findall(line)
+    for match_groups in matches:
+        start_letter = match_groups[0]
+        end_letter = match_groups[1]
+        if ord(start_letter) > ord(end_letter):
+            result.append(f"Error beginning ASCII ({start_letter}) is greater than ending ASCII ({end_letter}): {start_letter}-{end_letter}")
     return result
+
+
+def _test_replace_ipv4_match(match):
+    original_ip = match.group('ip_address')
+    slash_prefix = match.group('slash_prefix')
+    dotted_mask = match.group('dotted_mask')
+    increment_str = match.group('increment')
+
+    # Determine the prefix length as an integer
+    prefix_len_int = None
+    if slash_prefix:
+        prefix_len_int = int(slash_prefix[1:])
+    elif dotted_mask:
+        prefix_len_int = ipaddress.IPv4Network(f"0.0.0.0/{dotted_mask}").prefixlen
+    else:
+        prefix_len_int = 30
+
+    increment = int(increment_str) if increment_str else 1
+
+    current_ip_obj = ipaddress.IPv4Address(original_ip)
+    # Use the integer prefix length for network object creation
+    network_obj = ipaddress.IPv4Network((original_ip, prefix_len_int), strict=False)
+
+    for _ in range(increment):
+        current_ip_obj, network_obj = _get_next_usable_ipv4_address(current_ip_obj, network_obj)
+
+    # For the return value, always format as IP/prefixlen
+    return f"{current_ip_obj}/{prefix_len_int}"
+
+def _test_replace_ipv6_match(match):
+    original_ip = match.group('ip_address')
+    prefix_length = match.group('prefix_length')
+    increment_str = match.group('increment')
+
+    increment = int(increment_str) if increment_str else 1
+
+    current_ip_obj = ipaddress.IPv6Address(original_ip)
+    network_obj = ipaddress.IPv6Network(f"{original_ip}{prefix_length}", strict=False)
+
+    for _ in range(increment):
+        current_ip_obj, network_obj = _get_next_ipv6_address(current_ip_obj, network_obj)
+
+    return f"{current_ip_obj}{prefix_length}"
 
 if __name__ == '__main__':
     task()
